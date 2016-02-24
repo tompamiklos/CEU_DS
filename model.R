@@ -166,7 +166,7 @@ dt$native_country = as.character(dt$native_country)
 sum(is.na(dt$occupation)==is.na(dt$workclass))/length(dt$workclass)
 # NAs at the same records
 
-training_base <- dt[,-1, with = FALSE]
+training_base <- dt[,-16, with = FALSE]
 
 ########### ####### ### features
 
@@ -185,13 +185,60 @@ id_va <- sample(base::setdiff(1:N, id_tr))
 trainingSet <- training_base[id_tr,]
 validationSet <- training_base[id_va,]
 
-### H2O
+### H2O # http://localhost:54321
 
 library(h2o)
 h2o.init(max_mem_size = "1g", nthreads = -1)
 
+#paste(names(trainingSet), collapse = ",")
+for (i in c(2,4,6,7,8,9,10, 14,15)) {
+  trainingSet[[i]]<-as.factor(trainingSet[[i]])
+  validationSet[[i]]<-as.factor(validationSet[[i]])
+  test.adult.df[[i]]<-as.factor(test.adult.df[[i]])
+}
+test.adult.df[[1]]<-as.numeric(test.adult.df[[1]])
+
+str(trainingSet)
+str(test.adult.df)
+  
+
 
 ### models
+# random forest
+
+dtTr <- as.h2o(trainingSet)
+dtTr$earning <- as.factor(dtTr$earning)
+dtVa <- as.h2o(validationSet)
+dtVa$earning <- as.factor(dtVa$earning)
+dtTe <- as.h2o(test.adult.df)
+dtTe$earning <- as.factor(dtTe$earning)
+
+system.time({
+  md <- h2o.randomForest(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
+                         training_frame = dtTr, 
+                         mtries = -1, ntrees = 500, max_depth = 20, nbins = 200)
+})
+md
+
+h2o.auc(md) 
+h2o.auc(h2o.performance(md, dtTe))
+
+# gmb
+#for (i in c(2,4,6,7,8,9,10, 14,15)) {
+#  dtVa[[i]]<-as.factor(dtVa[[i]])
+#  dtTe[[i]]<-as.factor(dtTe[[i]])
+#}
+
+system.time({
+  md <- h2o.gbm(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
+                training_frame = dtTr, validation_frame = dtVa,
+                max_depth = 15, ntrees = 500, learn_rate = 0.01, nbins = 200,
+                stopping_rounds = 3, stopping_tolerance = 1e-3)
+})
+md
+
+h2o.auc(md)
+h2o.auc(h2o.performance(md, dtTe))
 
 
 
