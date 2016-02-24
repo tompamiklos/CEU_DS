@@ -7,11 +7,16 @@ library(ggplot2)
 library(randomForest)
 library(data.table)
 
+library(knitr)
+opts_knit$set(root.dir = "../")
+
+
 options(stringsAsFactors = FALSE)
 
 ##### Opening and basic formating of datasets
 
-setwd("D:/Google Drive/Mikike/BusinessAnalytics/Tananyag/Data Science for Business/Final project")
+
+#setwd("D:/Google Drive/Mikike/BusinessAnalytics/Tananyag/Data Science for Business/Final project")
 
 train.adult.df <- read.csv("adult.data", header = FALSE, sep = ",")
 colnames(train.adult.df) <- c("age","workclass","fnlwgt","education","education_num","marital_status","occupation","relationship","race","sex","capital_gain","capital_loss","hours_per_week","native_country","earning")
@@ -224,10 +229,6 @@ h2o.auc(md)
 h2o.auc(h2o.performance(md, dtTe))
 
 # gmb
-#for (i in c(2,4,6,7,8,9,10, 14,15)) {
-#  dtVa[[i]]<-as.factor(dtVa[[i]])
-#  dtTe[[i]]<-as.factor(dtTe[[i]])
-#}
 
 system.time({
   md <- h2o.gbm(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
