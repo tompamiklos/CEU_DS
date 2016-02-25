@@ -190,7 +190,7 @@ sum(is.na(dt$native_country))/length(dt$native_country)
 country <- data.table(table(dt$native_country, useNA = "always"))
 colnames(country) <- c("Country", "Nr")
 a <-  sum(country$Nr)
-country[, Percent :=  round(Nr/sum(a)*100,4)]
+country[, Percent :=  round(Nr/a*100,4)]
 dt$native_country = as.character(dt$native_country)
 # is that count? USA: 89.6, MX: 2, NA: 1.8, Phil: 0.6
 
@@ -204,25 +204,31 @@ sum(is.na(dt$occupation)==is.na(dt$workclass))/length(dt$workclass)
 
 
 ########### ####### ### features
-training_base <- dt[,-16, with = FALSE]
+training_base <- dt[,-18, with = FALSE]
+training_base <- training_base[,-17, with = FALSE]
+training_base <- training_base[,-16, with = FALSE]
+
 
 # removing rows with NAs
 #training_base <- na.omit(training_base)
 
 # fill missing variables
-#test.adult.df$workclass[is.na(test.adult.df$workclass)] = "UNKNOWN"
-#test.adult.df$occupation[is.na(test.adult.df$occupation)] = "UNKNOWN"
+test.adult.df$workclass[is.na(test.adult.df$workclass)] = "UNKNOWN"
+test.adult.df$occupation[is.na(test.adult.df$occupation)] = "UNKNOWN"
 training_base$workclass[is.na(training_base$workclass)] = "UNKNOWN"
 training_base$occupation[is.na(training_base$occupation)] = "UNKNOWN"
 
-# Correcting Test set target
+# Correcting Test set target and columns
 test.adult.df[earning==" <=50K.", earning := " <=50K"] 
 test.adult.df[earning==" >50K.", earning := " >50K"] 
+test.adult.df <- test.adult.df[,-16, with = FALSE]
 
 ########### ####### ### model building
 
 
 ### training and validation sets
+
+set.seed(73)
 
 N <- nrow(training_base)
 id_tr <- sample(1:N,2*N/3)
