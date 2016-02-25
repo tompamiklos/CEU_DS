@@ -37,7 +37,36 @@ dt <- train.adult.df
 summary (dt$earning)
 table(dt$earning)
 
-##### Checking features
+##### Training set vs Test set
+class(train.adult.df)
+templist <- list(train.adult.df[, type := "train"], test.adult.df[, type := "test"])
+dtCompare <- rbindlist(templist, use.names=TRUE)
+
+for (i in c(2,4,6,7,8,9,10, 14,15)) {
+  dtCompare[[i]]<-as.factor(dtCompare[[i]])
+}
+dtCompare[[1]]<-as.numeric(dtCompare[[1]])
+class(dtCompare$workclass)
+
+ggplot(dtCompare, aes(x=age))+geom_histogram(binwidth = 1)+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=workclass))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=fnlwgt))+geom_bar(binwidth = 50000)+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=education))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=education_num))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=marital_status))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=occupation))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=relationship))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=race))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=sex))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=capital_gain))+geom_bar(binwidth = 10000)+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=capital_loss))+geom_bar(binwidth = 1000)+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=hours_per_week))+geom_bar()+facet_grid(type~., scales = "free")
+ggplot(dtCompare, aes(x=native_country))+geom_bar()+facet_grid(type~., scales = "free")
+
+# same distribution - dividing is ok
+
+
+##### Checking features - training set
 
 ## age
 
@@ -145,7 +174,7 @@ summary(dt$capital_loss)
 sum(is.na(dt$capital_loss))
 
 ## hours_per_week
-
+# 100 hours?
 plot(dt$hours_per_week, main = "hours_per_week distribution", ylab = "hours_per_week")
 ggplot(dt, aes(x=hours_per_week))+geom_histogram(binwidth = 5)+facet_grid(earning~., scales = "free")
 summary(dt$hours_per_week)
@@ -171,10 +200,24 @@ dt$native_country = as.character(dt$native_country)
 sum(is.na(dt$occupation)==is.na(dt$workclass))/length(dt$workclass)
 # NAs at the same records
 
-training_base <- dt[,-16, with = FALSE]
+
+
 
 ########### ####### ### features
+training_base <- dt[,-16, with = FALSE]
 
+# removing rows with NAs
+#training_base <- na.omit(training_base)
+
+# fill missing variables
+#test.adult.df$workclass[is.na(test.adult.df$workclass)] = "UNKNOWN"
+#test.adult.df$occupation[is.na(test.adult.df$occupation)] = "UNKNOWN"
+training_base$workclass[is.na(training_base$workclass)] = "UNKNOWN"
+training_base$occupation[is.na(training_base$occupation)] = "UNKNOWN"
+
+# Correcting Test set target
+test.adult.df[earning==" <=50K.", earning := " <=50K"] 
+test.adult.df[earning==" >50K.", earning := " >50K"] 
 
 ########### ####### ### model building
 
@@ -205,11 +248,12 @@ test.adult.df[[1]]<-as.numeric(test.adult.df[[1]])
 
 str(trainingSet)
 str(test.adult.df)
-  
-
+#unique(trainingSet$earning)  
+#unique(validationSet$earning)
+#unique(test.adult.df$earning)
 
 ### models
-# random forest
+
 
 dtTr <- as.h2o(trainingSet)
 dtTr$earning <- as.factor(dtTr$earning)
@@ -218,12 +262,15 @@ dtVa$earning <- as.factor(dtVa$earning)
 dtTe <- as.h2o(test.adult.df)
 dtTe$earning <- as.factor(dtTe$earning)
 
+# random forest
+
 system.time({
   md <- h2o.randomForest(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
                          training_frame = dtTr, 
                          mtries = -1, ntrees = 500, max_depth = 20, nbins = 200)
 })
 md
+
 
 h2o.auc(md) 
 h2o.auc(h2o.performance(md, dtTe))
