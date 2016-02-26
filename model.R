@@ -72,7 +72,7 @@ ggplot(dtCompare, aes(x=native_country))+geom_bar()+facet_grid(type~., scales = 
 
 plot(dt$age, main = "Age distribution", ylab = "Age", ylim = c(0, 110))
 ggplot(dt, aes(x=age))+geom_histogram(binwidth = 1)+facet_grid(earning~., scales = "free")
-# strange 90-year-old population
+# strange 90-year-old population - remove 90s
 a <- NULL
 for(i in 17:90){
   a <- c(a,dt[age==i, .N])
@@ -91,13 +91,16 @@ unique(dt$workclass)
 sum(is.na(dt$workclass))
 sum(is.na(dt$workclass))/length(dt$workclass)
 dt$workclass = as.character(dt$workclass)
+# many NAs
 
 ## fnlwgt
+
 # outlier???
 plot(dt$fnlwgt, main = "fnlwgt distribution", ylab = "fnlwgt")
 ggplot(dt, aes(x=fnlwgt))+geom_histogram(binwidth = 30000)+facet_grid(earning~., scales = "free")
 summary(dt$fnlwgt)
 sum(is.na(dt$fnlwgt))
+
 
 dt[, logfnlwgt:= log(fnlwgt)]
 ggplot(dt, aes(x=logfnlwgt))+geom_histogram()
@@ -133,6 +136,7 @@ unique(dt$occupation)
 sum(is.na(dt$occupation))
 sum(is.na(dt$occupation))/length(dt$occupation)
 dt$occupation = as.character(dt$occupation) 
+# many NAs
 
 ## relationship
 
@@ -159,6 +163,7 @@ sum(is.na(dt$sex))
 dt$sex = as.character(dt$sex)
 
 ## capital_gain
+
 # ez mi a szar egyáltalán
 plot(dt$capital_gain, main = "capital_gain distribution", ylab = "capital_gain")
 ggplot(dt, aes(x=capital_gain))+geom_histogram()+facet_grid(earning~., scales = "free")
@@ -167,6 +172,7 @@ sum(is.na(dt$capital_gain))
 
 
 ## capital_loss
+
 # ez mi a szar egyáltalán
 plot(dt$capital_loss, main = "capital_loss distribution", ylab = "capital_loss")
 ggplot(dt, aes(x=capital_loss))+geom_histogram()+facet_grid(earning~., scales = "free")
@@ -174,11 +180,16 @@ summary(dt$capital_loss)
 sum(is.na(dt$capital_loss))
 
 ## hours_per_week
+
 # 100 hours?
 plot(dt$hours_per_week, main = "hours_per_week distribution", ylab = "hours_per_week")
-ggplot(dt, aes(x=hours_per_week))+geom_histogram(binwidth = 5)+facet_grid(earning~., scales = "free")
+ggplot(dt, aes(x=hours_per_week))+geom_histogram(binwidth = 1)+facet_grid(earning~., scales = "free")
 summary(dt$hours_per_week)
 sum(is.na(dt$hours_per_week))
+a <- NULL
+for(i in 1:99){
+  a <- c(a,dt[hours_per_week==i, .N])
+}
 
 ## Native country
 
@@ -222,6 +233,15 @@ training_base$occupation[is.na(training_base$occupation)] = "UNKNOWN"
 test.adult.df[earning==" <=50K.", earning := " <=50K"] 
 test.adult.df[earning==" >50K.", earning := " >50K"] 
 test.adult.df <- test.adult.df[,-16, with = FALSE]
+
+# removing 90 year-olds 
+training_base <- filter(training_base, training_base$age!=90)
+test.adult.df <- filter(test.adult.df, test.adult.df$age!=90)
+
+# removing hours_per_week > 84 (daily 12)
+training_base <- filter(training_base, training_base$hours_per_week<84)
+test.adult.df <- filter(test.adult.df, test.adult.df$hours_per_week<84)
+
 
 ########### ####### ### model building
 
