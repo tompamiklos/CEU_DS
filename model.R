@@ -81,7 +81,7 @@ summary(dt$age)
 sum(is.na(dt$age))
 
 dt[, logage:= log(age)]
-ggplot(dt, aes(x=logage))+geom_histogram(binwidth = .05)+facet_grid(earning~., scales = "free")
+ggplot(dt, aes(x=logage))+geom_histogram(binwidth = .02)+facet_grid(earning~., scales = "free")
 
 ## workclass
 
@@ -103,7 +103,7 @@ sum(is.na(dt$fnlwgt))
 
 
 dt[, logfnlwgt:= log(fnlwgt)]
-ggplot(dt, aes(x=logfnlwgt))+geom_histogram()
+ggplot(dt, aes(x=logfnlwgt))+geom_histogram(bins = 50)
 
 ## education
 
@@ -164,24 +164,30 @@ dt$sex = as.character(dt$sex)
 
 ## capital_gain
 
-# ez mi a szar egyáltalán
 plot(dt$capital_gain, main = "capital_gain distribution", ylab = "capital_gain")
 ggplot(dt, aes(x=capital_gain))+geom_histogram()+facet_grid(earning~., scales = "free")
 summary(dt$capital_gain)
 sum(is.na(dt$capital_gain))
+kingsOfTheHill <- dt[capital_gain>30000,]
+kingsOfTheHill[,.N]
+kingsOfTheHill <- dt[capital_gain>0,]
+ggplot(kingsOfTheHill, aes(x=capital_gain))+geom_histogram()+facet_grid(earning~., scales = "free")
+
+# Suspicious: capital_gain of 99999, nothing between 50000 and 99999, drop?
 
 
 ## capital_loss
 
-# ez mi a szar egyáltalán
 plot(dt$capital_loss, main = "capital_loss distribution", ylab = "capital_loss")
 ggplot(dt, aes(x=capital_loss))+geom_histogram()+facet_grid(earning~., scales = "free")
 summary(dt$capital_loss)
 sum(is.na(dt$capital_loss))
+kingsOfTheDeep <- dt[capital_loss>0,]
+kingsOfTheDeep[,.N]
+ggplot(kingsOfTheDeep, aes(x=capital_loss))+geom_histogram()+facet_grid(earning~., scales = "free")
 
 ## hours_per_week
-
-# 100 hours?
+# 100 hours? - 84 and above - drop?
 plot(dt$hours_per_week, main = "hours_per_week distribution", ylab = "hours_per_week")
 ggplot(dt, aes(x=hours_per_week))+geom_histogram(binwidth = 1)+facet_grid(earning~., scales = "free")
 summary(dt$hours_per_week)
@@ -204,6 +210,7 @@ a <-  sum(country$Nr)
 country[, Percent :=  round(Nr/a*100,4)]
 dt$native_country = as.character(dt$native_country)
 # is that count? USA: 89.6, MX: 2, NA: 1.8, Phil: 0.6
+
 
 
 ##### chk $workclass vs $occupation because of the similarity in nr of NAs
@@ -238,9 +245,13 @@ test.adult.df <- test.adult.df[,-16, with = FALSE]
 training_base <- filter(training_base, training_base$age!=90)
 test.adult.df <- filter(test.adult.df, test.adult.df$age!=90)
 
-# removing hours_per_week > 84 (daily 12)
-training_base <- filter(training_base, training_base$hours_per_week<84)
-test.adult.df <- filter(test.adult.df, test.adult.df$hours_per_week<84)
+# removing hours_per_week > 83 (daily 12)
+training_base <- filter(training_base, training_base$hours_per_week<83)
+test.adult.df <- filter(test.adult.df, test.adult.df$hours_per_week<83)
+
+# removing capital gain = 99999
+training_base <- filter(training_base, training_base$capital_gain>99990)
+test.adult.df <- filter(test.adult.df, test.adult.df$capital_gain>99990)
 
 
 ########### ####### ### model building
