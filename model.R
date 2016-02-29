@@ -9,8 +9,6 @@ library(data.table)
 
 library(knitr)
 opts_knit$set(root.dir = "../")
-
-
 options(stringsAsFactors = FALSE)
 
 ##### Opening and basic formating of datasets
@@ -75,8 +73,11 @@ ggplot(dt, aes(x=age))+geom_histogram(binwidth = 1)+facet_grid(earning~., scales
 # strange 90-year-old population - remove 90s
 a <- NULL
 for(i in 17:90){
-  a <- c(a,dt[age==i, .N])
+  a <- as.list (c(a, i,dt[age==i, .N]))
 }
+table(a)
+str(a)
+
 summary(dt$age)
 sum(is.na(dt$age))
 
@@ -95,17 +96,19 @@ dt$workclass = as.character(dt$workclass)
 
 ## fnlwgt
 
-# outlier???
+# outlier??? number of high
 plot(dt$fnlwgt, main = "fnlwgt distribution", ylab = "fnlwgt")
 ggplot(dt, aes(x=fnlwgt))+geom_histogram(binwidth = 30000)+facet_grid(earning~., scales = "free")
 summary(dt$fnlwgt)
 sum(is.na(dt$fnlwgt))
 
 
+dt[fnlwgt>750000, .N]
+
 dt[, logfnlwgt:= log(fnlwgt)]
 ggplot(dt, aes(x=logfnlwgt))+geom_histogram(bins = 50)
 
-## education
+## educationdt$fnlwgt
 
 dt$education = as.factor(dt$education)
 ggplot(dt, aes(x=education))+geom_bar()+facet_grid(earning~., scales = "free")
@@ -165,13 +168,13 @@ dt$sex = as.character(dt$sex)
 ## capital_gain
 
 plot(dt$capital_gain, main = "capital_gain distribution", ylab = "capital_gain")
-ggplot(dt, aes(x=capital_gain))+geom_histogram()+facet_grid(earning~., scales = "free")
+ggplot(dt, aes(x=capital_gain))+geom_histogram(bins = 70)+facet_grid(earning~., scales = "free")
 summary(dt$capital_gain)
 sum(is.na(dt$capital_gain))
-kingsOfTheHill <- dt[capital_gain>30000,]
+kingsOfTheHill <- dt[capital_gain>0000,]
 kingsOfTheHill[,.N]
-kingsOfTheHill <- dt[capital_gain>0,]
-ggplot(kingsOfTheHill, aes(x=capital_gain))+geom_histogram()+facet_grid(earning~., scales = "free")
+#kingsOfTheHill <- dt[capital_gain>0,]
+ggplot(kingsOfTheHill, aes(x=capital_gain))+geom_histogram(bins = 70)+facet_grid(earning~., scales = "free")
 
 # Suspicious: capital_gain of 99999, nothing between 50000 and 99999, drop?
 
@@ -210,7 +213,7 @@ a <-  sum(country$Nr)
 country[, Percent :=  round(Nr/a*100,4)]
 dt$native_country = as.character(dt$native_country)
 # is that count? USA: 89.6, MX: 2, NA: 1.8, Phil: 0.6
-
+head(country[with(country,order(-Percent)),], 10)
 
 
 ##### chk $workclass vs $occupation because of the similarity in nr of NAs
@@ -227,8 +230,7 @@ training_base <- training_base[,-17, with = FALSE]
 training_base <- training_base[,-16, with = FALSE]
 
 
-# removing rows with NAs
-#training_base <- na.omit(training_base)
+
 
 # fill missing variables
 test.adult.df$workclass[is.na(test.adult.df$workclass)] = "UNKNOWN"
@@ -236,7 +238,13 @@ test.adult.df$occupation[is.na(test.adult.df$occupation)] = "UNKNOWN"
 training_base$workclass[is.na(training_base$workclass)] = "UNKNOWN"
 training_base$occupation[is.na(training_base$occupation)] = "UNKNOWN"
 
+# removing rows with NAs
+# Deleting observations with NAs
+training_base <- na.omit(training_base)
+test.adult.df <- na.omit(test.adult.df)
+
 # Correcting Test set target and columns
+setDT(test.adult.df)
 test.adult.df[earning==" <=50K.", earning := " <=50K"] 
 test.adult.df[earning==" >50K.", earning := " >50K"] 
 test.adult.df <- test.adult.df[,-16, with = FALSE]
@@ -250,8 +258,8 @@ training_base <- filter(training_base, training_base$hours_per_week<83)
 test.adult.df <- filter(test.adult.df, test.adult.df$hours_per_week<83)
 
 # removing capital gain = 99999
-training_base <- filter(training_base, training_base$capital_gain>99990)
-test.adult.df <- filter(test.adult.df, test.adult.df$capital_gain>99990)
+training_base <- filter(training_base, training_base$capital_gain<99999)
+test.adult.df <- filter(test.adult.df, test.adult.df$capital_gain<99999)
 
 
 ########### ####### ### model building
@@ -290,7 +298,7 @@ str(test.adult.df)
 #unique(test.adult.df$earning)
 
 ### models
-
+class(test.adult.df$earning)
 
 dtTr <- as.h2o(trainingSet)
 dtTr$earning <- as.factor(dtTr$earning)
@@ -304,15 +312,27 @@ dtTe$earning <- as.factor(dtTe$earning)
 system.time({
   md <- h2o.randomForest(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
                          training_frame = dtTr, 
-                         mtries = -1, ntrees = 500, max_depth = 20, nbins = 200)
+                         mtries = -1, ntrees = 500, max_depth = 30, nbins = 200)
 })
 md
 
 
 h2o.auc(md) 
-h2o.auc(h2o.performance(md, dtTe))
+#h2o.auc(h2o.performance(md, dtTe))
 
-# gmb
+results <- data.frame(Model=character(), 
+                      MSE=numeric(), 
+                      AUC_validation = numeric(), 
+                      AUC_training = numeric(), 
+                      AUC_test = numeric())
+results <- rbind(results, c("Random Forest", 
+                            h2o.mse(md), 
+                            h2o.auc(md, train = TRUE), 
+                            h2o.auc(md, train = TRUE),
+                            h2o.auc(h2o.performance(md, dtTe))))
+cm_rf<-h2o.confusionMatrix(md)
+
+# gbm
 
 system.time({
   md <- h2o.gbm(x = seq(ncol(dtTr) - 1), y = ncol(dtTr), 
@@ -323,12 +343,16 @@ system.time({
 md
 
 h2o.auc(md)
-h2o.auc(h2o.performance(md, dtTe))
+#h2o.auc(h2o.performance(md, dtTe))
 
+results <- rbind(results, c("GBM", 
+                            h2o.mse(md), 
+                            h2o.auc(md, valid = TRUE), 
+                            h2o.auc(md, train = TRUE),
+                            h2o.auc(h2o.performance(md, dtTe))))
+base::colnames(results) <- c("Model","MSE","AUC_validation","AUC_training","AUC_test")
 
-
-
-
+cm_gbm <- h2o.confusionMatrix(md)
 
 ############### sandbox
 factorx <- factor(cut(dt$native_country, breaks=unique(dt$native_country)))
